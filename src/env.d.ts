@@ -12,6 +12,9 @@ interface Services {
   readFile: (file: string) => string
   writeTextFile: (text: string) => string
   writeImageFile: (base64Url: string) => string | undefined
+  getV2exTopics: (kind: 'hot' | 'latest') => Promise<unknown>
+  getV2exTopic: (topicId: number) => Promise<unknown>
+  getV2exReplies: (topicId: number) => Promise<unknown>
 }
 
 declare global {

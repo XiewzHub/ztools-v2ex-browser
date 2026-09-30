@@ -2,20 +2,24 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { fetchTopics } from './client.ts'
 
-test('热门列表请求正确的公开地址', async () => {
-  let calledUrl = ''
-  const request = async (url: string) => {
-    calledUrl = url
-    return new Response(JSON.stringify([]), { status: 200 })
+test('通过 Preload 服务加载热门列表', async () => {
+  let requestedKind = ''
+  globalThis.window = {
+    services: {
+      getV2exTopics: async (kind: string) => {
+        requestedKind = kind
+        return []
+      }
+    }
   }
 
-  await fetchTopics('hot', request as typeof fetch)
+  await fetchTopics('hot')
 
-  assert.equal(calledUrl, 'https://www.v2ex.com/api/topics/hot.json')
+  assert.equal(requestedKind, 'hot')
 })
 
-test('非成功 HTTP 状态转换为中文错误', async () => {
-  const request = async () => new Response('', { status: 503 })
+test('Preload 不可用时提示需要在 ZTools 中打开', async () => {
+  globalThis.window = {} as Window & typeof globalThis
 
-  await assert.rejects(fetchTopics('latest', request as typeof fetch), /暂时不可用/)
+  assert.throws(() => fetchTopics('latest'), /ZTools 中重新打开插件/)
 })

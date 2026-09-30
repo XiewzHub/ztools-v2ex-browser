@@ -1,35 +1,16 @@
 import type { FeedKind, TopicBundle, TopicDetail, TopicReply, TopicSummary } from './types'
 
-const API_BASE = 'https://www.v2ex.com/api'
-const REQUEST_TIMEOUT_MS = 12_000
-
-async function requestJson<T>(url: string, request: typeof fetch): Promise<T> {
-  let response: Response
-  try {
-    response = await request(url, {
-      headers: { Accept: 'application/json' },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
-    })
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'TimeoutError') {
-      throw new Error('V2EX 请求超时，请稍后重试。')
-    }
-    throw new Error('无法连接到 V2EX，请检查网络后重试。')
-  }
-
-  if (!response.ok) {
-    throw new Error('V2EX 服务暂时不可用，请稍后重试。')
-  }
-
-  return response.json() as Promise<T>
+function getServices() {
+  if (!window.services) throw new Error('V2EX 网络服务尚未加载，请在 ZTools 中重新打开插件。')
+  return window.services
 }
 
-export function fetchTopics(kind: FeedKind, request: typeof fetch = fetch): Promise<TopicSummary[]> {
-  return requestJson<TopicSummary[]>(`${API_BASE}/topics/${kind}.json`, request)
+export function fetchTopics(kind: FeedKind): Promise<TopicSummary[]> {
+  return getServices().getV2exTopics(kind) as Promise<TopicSummary[]>
 }
 
-export async function fetchTopic(topicId: number, request: typeof fetch = fetch): Promise<TopicDetail> {
-  const topics = await requestJson<TopicDetail[]>(`${API_BASE}/topics/show.json?id=${topicId}`, request)
+export async function fetchTopic(topicId: number): Promise<TopicDetail> {
+  const topics = (await getServices().getV2exTopic(topicId)) as TopicDetail[]
   const topic = topics[0]
   if (!topic) {
     throw new Error('没有找到这篇帖子，它可能已经被删除。')
@@ -37,11 +18,11 @@ export async function fetchTopic(topicId: number, request: typeof fetch = fetch)
   return topic
 }
 
-export function fetchReplies(topicId: number, request: typeof fetch = fetch): Promise<TopicReply[]> {
-  return requestJson<TopicReply[]>(`${API_BASE}/replies/show.json?topic_id=${topicId}`, request)
+export function fetchReplies(topicId: number): Promise<TopicReply[]> {
+  return getServices().getV2exReplies(topicId) as Promise<TopicReply[]>
 }
 
-export async function fetchTopicBundle(topicId: number, request: typeof fetch = fetch): Promise<TopicBundle> {
-  const [topic, replies] = await Promise.all([fetchTopic(topicId, request), fetchReplies(topicId, request)])
+export async function fetchTopicBundle(topicId: number): Promise<TopicBundle> {
+  const [topic, replies] = await Promise.all([fetchTopic(topicId), fetchReplies(topicId)])
   return { topic, replies }
 }

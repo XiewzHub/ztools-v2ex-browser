@@ -1,5 +1,9 @@
 const fs = require('node:fs')
 const path = require('node:path')
+const { createV2exService } = require('./v2ex-service.cjs')
+const { createSystemProxyRequest } = require('./proxy-request.cjs')
+
+const v2exService = createV2exService(createSystemProxyRequest())
 
 // 通过 window 对象向渲染进程注入 nodejs 能力
 window.services = {
@@ -23,5 +27,15 @@ window.services = {
     )
     fs.writeFileSync(filePath, base64Url.substring(matchs[0].length), { encoding: 'base64' })
     return filePath
+  },
+  // 显式通过 macOS 系统 HTTPS 代理使用 Node 请求，避免渲染页跨域限制和 ZTools 会话未继承代理的问题。
+  getV2exTopics(kind) {
+    return v2exService.getTopics(kind)
+  },
+  getV2exTopic(topicId) {
+    return v2exService.getTopic(topicId)
+  },
+  getV2exReplies(topicId) {
+    return v2exService.getReplies(topicId)
   }
 }

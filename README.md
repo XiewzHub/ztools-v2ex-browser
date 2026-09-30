@@ -46,3 +46,5 @@ nvm exec 26 npm run build
 - `https://www.v2ex.com/api/replies/show.json?topic_id=<帖子ID>`
 
 这些接口不需要 Token。插件不收集、不保存 V2EX 账号或访问凭据。
+
+请求由 ZTools Preload 中的 Node HTTPS 代理 Agent 发起：它读取 macOS 系统 HTTPS 代理设置，通过该代理访问 V2EX，因此不受浏览器跨域限制，也不依赖 ZTools 是否自动继承系统代理。
