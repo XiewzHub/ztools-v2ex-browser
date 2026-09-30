@@ -1,5 +1,5 @@
 {
-  "name": "my-first-plugin",
+  "name": "ztools-v2ex-browser",
   "version": "1.0.0",
   "description": "用于搜索v2ex的最热和最新帖子",
   "type": "module",
