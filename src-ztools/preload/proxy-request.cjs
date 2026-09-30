@@ -14,6 +14,15 @@ function readSystemHttpsProxy(readProxyConfig = () => execFileSync('scutil', ['-
   return { host, port }
 }
 
+function isAllowedAvatarUrl(value) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'https:' && (url.hostname === 'cdn.v2ex.com' || url.hostname === 'www.gravatar.com')
+  } catch {
+    return false
+  }
+}
+
 class HttpsProxyAgent extends https.Agent {
   constructor(proxy) {
     super()
@@ -50,7 +59,7 @@ class HttpsProxyAgent extends https.Agent {
   }
 }
 
-function requestJsonViaHttpsProxy(url, proxy) {
+function requestViaHttpsProxy(url, proxy, headers = {}) {
   const target = new URL(url)
   if (target.protocol !== 'https:') throw new Error('仅支持 HTTPS 的 V2EX 请求。')
   const agent = new HttpsProxyAgent(proxy)
@@ -60,7 +69,7 @@ function requestJsonViaHttpsProxy(url, proxy) {
       hostname: target.hostname,
       port: target.port || 443,
       path: `${target.pathname}${target.search}`,
-      headers: { Accept: 'application/json' },
+      headers,
       agent,
       timeout: 20_000
     }, (response) => {
@@ -72,11 +81,7 @@ function requestJsonViaHttpsProxy(url, proxy) {
           reject(new Error(`V2EX 服务暂时不可用（HTTP ${response.statusCode}）。`))
           return
         }
-        try {
-          resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))
-        } catch {
-          reject(new Error('V2EX 返回了无法识别的数据。'))
-        }
+        resolve({ body: Buffer.concat(chunks), contentType: response.headers['content-type'] || '' })
       })
     })
     request.once('timeout', () => request.destroy(new Error('V2EX 请求超时。')))
@@ -84,8 +89,32 @@ function requestJsonViaHttpsProxy(url, proxy) {
   })
 }
 
+async function requestJsonViaHttpsProxy(url, proxy) {
+  const result = await requestViaHttpsProxy(url, proxy, { Accept: 'application/json' })
+  try {
+    return JSON.parse(result.body.toString('utf8'))
+  } catch {
+    throw new Error('V2EX 返回了无法识别的数据。')
+  }
+}
+
 function createSystemProxyRequest(readProxyConfig) {
   return (url) => requestJsonViaHttpsProxy(url, readSystemHttpsProxy(readProxyConfig))
 }
 
-module.exports = { createSystemProxyRequest, HttpsProxyAgent, readSystemHttpsProxy, requestJsonViaHttpsProxy }
+async function requestAvatarDataUrl(url, readProxyConfig) {
+  if (!isAllowedAvatarUrl(url)) throw new Error('不支持的头像地址。')
+  const proxy = readSystemHttpsProxy(readProxyConfig)
+  let result
+  try {
+    result = await requestViaHttpsProxy(url, proxy, { Accept: 'image/avif,image/webp,image/png,image/jpeg,image/*' })
+  } catch {
+    result = await requestViaHttpsProxy(url, proxy, { Accept: 'image/avif,image/webp,image/png,image/jpeg,image/*' })
+  }
+  const mimeType = result.contentType.split(';')[0].toLowerCase()
+  if (!/^image\/(avif|gif|jpe?g|png|webp)$/.test(mimeType)) throw new Error('头像服务未返回有效图片。')
+  if (result.body.length > 512 * 1024) throw new Error('头像图片过大。')
+  return `data:${mimeType};base64,${result.body.toString('base64')}`
+}
+
+module.exports = { createSystemProxyRequest, HttpsProxyAgent, isAllowedAvatarUrl, readSystemHttpsProxy, requestAvatarDataUrl, requestJsonViaHttpsProxy }

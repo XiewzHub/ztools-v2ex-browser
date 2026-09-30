@@ -15,6 +15,7 @@ interface Services {
   getV2exTopics: (kind: 'hot' | 'latest') => Promise<unknown>
   getV2exTopic: (topicId: number) => Promise<unknown>
   getV2exReplies: (topicId: number) => Promise<unknown>
+  getV2exAvatar: (url: string) => Promise<string>
 }
 
 declare global {

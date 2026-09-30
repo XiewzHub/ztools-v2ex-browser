@@ -1,9 +1,10 @@
 const fs = require('node:fs')
 const path = require('node:path')
 const { createV2exService } = require('./v2ex-service.cjs')
-const { createSystemProxyRequest } = require('./proxy-request.cjs')
+const { createSystemProxyRequest, requestAvatarDataUrl } = require('./proxy-request.cjs')
 
 const v2exService = createV2exService(createSystemProxyRequest())
+const avatarCache = new Map()
 
 // 通过 window 对象向渲染进程注入 nodejs 能力
 window.services = {
@@ -37,5 +38,12 @@ window.services = {
   },
   getV2exReplies(topicId) {
     return v2exService.getReplies(topicId)
+  },
+  getV2exAvatar(url) {
+    if (!avatarCache.has(url)) avatarCache.set(url, requestAvatarDataUrl(url))
+    return avatarCache.get(url).catch((error) => {
+      avatarCache.delete(url)
+      throw error
+    })
   }
 }

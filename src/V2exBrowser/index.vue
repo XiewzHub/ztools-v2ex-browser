@@ -1,15 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { fetchReplies, fetchTopic, fetchTopics } from '../v2ex/client'
-import { filterTopics, formatRelativeTime, getInitialFeed } from '../v2ex/presentation'
+import { filterTopics, formatRelativeTime } from '../v2ex/presentation'
+import { createAvatarStore } from '../v2ex/avatar'
+import { FeedCache } from '../v2ex/feed-cache'
 import type { FeedKind, TopicDetail, TopicReply, TopicSummary } from '../v2ex/types'
 
-interface EnterAction {
-  cmd?: string
-  command?: string
-}
-
-const props = defineProps<{ enterAction: EnterAction }>()
+defineProps<{ enterAction: Record<string, unknown> }>()
 
 const feed = ref<FeedKind>('hot')
 const topics = ref<TopicSummary[]>([])
@@ -23,23 +20,26 @@ const detailLoading = ref(false)
 const detailError = ref('')
 const repliesLoading = ref(false)
 const repliesError = ref('')
+const avatarVersion = ref(0)
 let feedRequestVersion = 0
 let detailRequestVersion = 0
 
 const visibleTopics = computed(() => filterTopics(topics.value, keyword.value))
 const selectedTopic = computed(() => topic.value)
 const feedTitle = computed(() => (feed.value === 'hot' ? '最热帖子' : '最新帖子'))
+const feeds = new FeedCache(fetchTopics)
+const avatars = createAvatarStore(async (url) => {
+  const image = await window.services.getV2exAvatar(normalizeAvatarUrl(url))
+  avatarVersion.value += 1
+  return image
+})
 
-function commandFromAction(action: EnterAction): string {
-  return action.cmd ?? action.command ?? ''
-}
-
-async function loadFeed() {
+async function loadFeed(forceRefresh = false) {
   const requestVersion = ++feedRequestVersion
   feedLoading.value = true
   feedError.value = ''
   try {
-    const result = await fetchTopics(feed.value)
+    const result = await feeds.load(feed.value, forceRefresh)
     if (requestVersion === feedRequestVersion) topics.value = result
   } catch (error) {
     if (requestVersion === feedRequestVersion) {
@@ -111,18 +111,25 @@ function openInBrowser() {
   window.open(url, '_blank', 'noopener,noreferrer')
 }
 
-function avatarUrl(url: string): string {
+function normalizeAvatarUrl(url: string): string {
   return url.startsWith('//') ? `https:${url}` : url
 }
 
+function avatarUrl(url: string): string | undefined {
+  avatarVersion.value
+  const normalized = normalizeAvatarUrl(url)
+  void avatars.load(normalized)
+  return avatars.get(normalized)
+}
+
 watch(
-  () => props.enterAction,
-  (action) => {
-    feed.value = getInitialFeed(commandFromAction(action))
+  () => true,
+  () => {
+    feed.value = 'hot'
     view.value = 'list'
     void loadFeed()
   },
-  { immediate: true, deep: true }
+  { immediate: true }
 )
 
 onMounted(() => {
@@ -144,7 +151,7 @@ onMounted(() => {
           </button>
         </div>
         <label class="search"><span class="search-icon" aria-hidden="true">⌕</span><input v-model="keyword" type="search" placeholder="搜索标题、节点或作者" /></label>
-        <button class="icon-button" title="刷新" aria-label="刷新" :disabled="feedLoading" @click="loadFeed">↻</button>
+        <button class="icon-button" title="刷新" aria-label="刷新" :disabled="feedLoading" @click="() => loadFeed(true)">↻</button>
       </header>
 
       <div class="feed-heading">
@@ -152,7 +159,7 @@ onMounted(() => {
         <span v-if="topics.length" class="count">{{ visibleTopics.length }} 篇</span>
       </div>
 
-      <div v-if="feedError" class="notice error"><strong>加载失败</strong><span>{{ feedError }}</span><button @click="loadFeed">重试</button></div>
+      <div v-if="feedError" class="notice error"><strong>加载失败</strong><span>{{ feedError }}</span><button @click="() => loadFeed(true)">重试</button></div>
       <div v-else-if="feedLoading && !topics.length" class="notice loading">正在从 V2EX 获取帖子...</div>
       <div v-else-if="!visibleTopics.length" class="notice empty">没有匹配的帖子，换个关键词试试。</div>
 

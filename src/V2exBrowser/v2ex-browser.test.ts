@@ -8,3 +8,12 @@ test('组件包含热门、最新、刷新和详情操作', () => {
     assert.match(source, new RegExp(label))
   }
 })
+
+test('原帖跳转按钮始终使用蓝色主操作样式', () => {
+  const stylesheet = readFileSync(new URL('../main.css', import.meta.url), 'utf8')
+
+  const rule = /\.open-button \{([^}]*)\}/.exec(stylesheet)?.[1] ?? ''
+  assert.match(rule, /background: #1677ff/)
+  assert.match(rule, /color: #fff/)
+  assert.match(rule, /border: 1px solid #1677ff/)
+})

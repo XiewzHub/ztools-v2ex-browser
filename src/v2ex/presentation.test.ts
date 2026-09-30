@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { filterTopics, formatRelativeTime, getInitialFeed } from './presentation.ts'
+import { filterTopics, formatRelativeTime } from './presentation.ts'
 import type { TopicSummary } from './types.ts'
 
 const topics: TopicSummary[] = [
@@ -16,11 +16,6 @@ const topics: TopicSummary[] = [
     member: { username: 'alice', avatar_normal: '' }
   }
 ]
-
-test('最新指令进入时加载最新列表', () => {
-  assert.equal(getInitialFeed('V2EX 最新'), 'latest')
-  assert.equal(getInitialFeed('v2ex'), 'hot')
-})
 
 test('按标题、节点和作者过滤帖子', () => {
   assert.equal(filterTopics(topics, 'Vue').length, 1)
