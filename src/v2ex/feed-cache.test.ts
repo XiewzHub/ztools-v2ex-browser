@@ -21,7 +21,7 @@ test('十分钟内切换回同一列表时复用缓存', async () => {
   assert.equal(topics, hotTopics)
 })
 
-test('缓存超过十分钟后切换回来会重新请求', async () => {
+test('热门缓存十分钟后切换回来会重新请求', async () => {
   let now = 1_000
   let calls = 0
   const cache = new FeedCache(async () => {
@@ -32,6 +32,21 @@ test('缓存超过十分钟后切换回来会重新请求', async () => {
   await cache.load('hot')
   now += 10 * 60 * 1_000
   await cache.load('hot')
+
+  assert.equal(calls, 2)
+})
+
+test('最新缓存两分钟后切换回来会重新请求', async () => {
+  let now = 1_000
+  let calls = 0
+  const cache = new FeedCache(async () => {
+    calls += 1
+    return latestTopics
+  }, () => now)
+
+  await cache.load('latest')
+  now += 2 * 60 * 1_000
+  await cache.load('latest')
 
   assert.equal(calls, 2)
 })

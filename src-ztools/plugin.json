@@ -4,7 +4,7 @@
   "title": "V2EX 帖子浏览",
   "description": "查看 V2EX 最热和最新帖子，阅读详情与回复",
   "author": "xiewz",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "main": "dist/index.html",
   "preload": "preload/services.js",
   "logo": "logo.png",

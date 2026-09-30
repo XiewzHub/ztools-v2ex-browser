@@ -1,6 +1,9 @@
 import type { FeedKind, TopicSummary } from './types'
 
-const CACHE_TTL_MS = 10 * 60 * 1_000
+const CACHE_TTL_MS: Record<FeedKind, number> = {
+  hot: 10 * 60 * 1_000,
+  latest: 2 * 60 * 1_000
+}
 
 interface CacheEntry {
   topics: TopicSummary[]
@@ -19,7 +22,7 @@ export class FeedCache {
 
   async load(kind: FeedKind, forceRefresh = false): Promise<TopicSummary[]> {
     const entry = this.entries.get(kind)
-    if (!forceRefresh && entry && this.now() - entry.loadedAt < CACHE_TTL_MS) {
+    if (!forceRefresh && entry && this.now() - entry.loadedAt < CACHE_TTL_MS[kind]) {
       return entry.topics
     }
 
