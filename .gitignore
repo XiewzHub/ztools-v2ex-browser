@@ -5,6 +5,9 @@ node_modules/
 src-ztools/dist/
 *.zip
 
+# Project documentation
+docs/
+
 # Local Vite state
 .vite/
 
