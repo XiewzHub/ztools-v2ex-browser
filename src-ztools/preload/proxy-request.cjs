@@ -3,15 +3,53 @@ const https = require('node:https')
 const tls = require('node:tls')
 const { execFileSync } = require('node:child_process')
 
-function readSystemHttpsProxy(readProxyConfig = () => execFileSync('scutil', ['--proxy'], { encoding: 'utf8' })) {
+function readMacHttpsProxy(readProxyConfig = () => execFileSync('scutil', ['--proxy'], { encoding: 'utf8' })) {
   const config = readProxyConfig()
+  if (/ProxyAutoConfigEnable\s*:\s*1/.test(config) || /ProxyAutoDiscoveryEnable\s*:\s*1/.test(config)) {
+    throw new Error('当前 macOS 使用自动代理配置，本插件暂不支持 PAC/WPAD。')
+  }
   const enabled = /HTTPSEnable\s*:\s*1/.test(config)
+  if (!enabled) return null
   const host = /HTTPSProxy\s*:\s*([^\s}]+)/.exec(config)?.[1]
   const port = Number(/HTTPSPort\s*:\s*(\d+)/.exec(config)?.[1])
-  if (!enabled || !host || !Number.isInteger(port) || port < 1 || port > 65_535) {
-    throw new Error('未检测到可用的 macOS HTTPS 系统代理。')
+  if (!host || !Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error('macOS HTTPS 系统代理已启用，但地址或端口无效。')
   }
   return { host, port }
+}
+
+function readWindowsHttpsProxy(readProxyConfig = () => execFileSync('reg', [
+  'query',
+  'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings'
+], { encoding: 'utf8' })) {
+  let config
+  try {
+    config = readProxyConfig()
+  } catch {
+    return null
+  }
+  if (/AutoConfigURL\s+REG_\w+\s+\S+/i.test(config)) {
+    throw new Error('当前 Windows 使用自动代理配置，本插件暂不支持 PAC/WPAD。')
+  }
+  const enabled = /ProxyEnable\s+REG_DWORD\s+0x0*1(?:\s|$)/i.test(config)
+  if (!enabled) return null
+  const value = /ProxyServer\s+REG_\w+\s+([^\r\n]+)/i.exec(config)?.[1]?.trim()
+  if (!value) throw new Error('Windows HTTPS 系统代理已启用，但没有配置代理地址。')
+  const address = /(?:^|;)https=([^;]+)/i.exec(value)?.[1] ||
+    (value.includes('=') ? null : value)
+  if (!address) return null
+  const match = /^([^:\s]+):(\d+)$/.exec(address)
+  const port = Number(match?.[2])
+  if (!match || !Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error('Windows HTTPS 系统代理已启用，但地址或端口无效。')
+  }
+  return { host: match[1], port }
+}
+
+function readSystemHttpsProxy() {
+  if (process.platform === 'win32') return readWindowsHttpsProxy()
+  if (process.platform === 'darwin') return readMacHttpsProxy()
+  return null
 }
 
 function isAllowedAvatarUrl(value) {
@@ -62,7 +100,7 @@ class HttpsProxyAgent extends https.Agent {
 function requestViaHttpsProxy(url, proxy, headers = {}) {
   const target = new URL(url)
   if (target.protocol !== 'https:') throw new Error('仅支持 HTTPS 的 V2EX 请求。')
-  const agent = new HttpsProxyAgent(proxy)
+  const agent = proxy ? new HttpsProxyAgent(proxy) : undefined
 
   return new Promise((resolve, reject) => {
     const request = https.get({
@@ -99,12 +137,12 @@ async function requestJsonViaHttpsProxy(url, proxy) {
 }
 
 function createSystemProxyRequest(readProxyConfig) {
-  return (url) => requestJsonViaHttpsProxy(url, readSystemHttpsProxy(readProxyConfig))
+  return (url) => requestJsonViaHttpsProxy(url, readProxyConfig ? readMacHttpsProxy(readProxyConfig) : readSystemHttpsProxy())
 }
 
 async function requestAvatarDataUrl(url, readProxyConfig) {
   if (!isAllowedAvatarUrl(url)) throw new Error('不支持的头像地址。')
-  const proxy = readSystemHttpsProxy(readProxyConfig)
+  const proxy = readProxyConfig ? readMacHttpsProxy(readProxyConfig) : readSystemHttpsProxy()
   let result
   try {
     result = await requestViaHttpsProxy(url, proxy, { Accept: 'image/avif,image/webp,image/png,image/jpeg,image/*' })
@@ -117,4 +155,4 @@ async function requestAvatarDataUrl(url, readProxyConfig) {
   return `data:${mimeType};base64,${result.body.toString('base64')}`
 }
 
-module.exports = { createSystemProxyRequest, HttpsProxyAgent, isAllowedAvatarUrl, readSystemHttpsProxy, requestAvatarDataUrl, requestJsonViaHttpsProxy }
+module.exports = { createSystemProxyRequest, HttpsProxyAgent, isAllowedAvatarUrl, readMacHttpsProxy, readSystemHttpsProxy, readWindowsHttpsProxy, requestAvatarDataUrl, requestJsonViaHttpsProxy }

@@ -5,8 +5,8 @@ function createV2exService(requestData) {
     try {
       return await requestData(url)
     } catch (error) {
-      if (error instanceof Error && /^V2EX 服务暂时不可用/.test(error.message)) throw error
-      throw new Error('无法通过系统代理连接到 V2EX，请检查代理连接后重试。')
+      if (error instanceof Error && /^(V2EX 服务暂时不可用|当前 (Windows|macOS) 使用自动代理配置|(Windows|macOS) HTTPS 系统代理已启用)/.test(error.message)) throw error
+      throw new Error('无法连接到 V2EX，请检查网络或代理连接后重试。')
     }
   }
 

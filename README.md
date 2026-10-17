@@ -24,7 +24,7 @@
 - 一键在系统浏览器打开 V2EX 原帖。
 - 热门列表缓存 10 分钟，最新列表缓存 2 分钟；刷新按钮立即重新拉取并更新当前缓存。
 - 在网络异常、超时或服务不可用时显示可重试提示，并保留已加载内容。
-- 通过 macOS 系统 HTTPS 代理请求 V2EX 和用户头像，避开 ZTools 渲染页的跨域与代理继承限制。
+- 通过 Node 请求 V2EX 和用户头像；每次请求读取 macOS 或 Windows 当前启用的 HTTPS 系统代理，未启用时直连。当前只支持手动配置的 HTTP 代理，不支持 PAC/WPAD 或 SOCKS 代理。
 
 ## ZTools 指令
 
@@ -43,6 +43,7 @@ nvm exec 26 npm run dev
 ```
 
 开发服务默认运行在 `http://localhost:5173`。ZTools 会根据 `src-ztools/plugin.json` 中的 `development.main` 加载开发版本。
+使用 ZTools 开发者工具打开插件前，请保持 `npm run dev` 运行；如果插件窗口已打开，再刷新或重新打开插件。
 
 ## 验证与构建
 

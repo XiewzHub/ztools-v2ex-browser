@@ -29,7 +29,7 @@ window.services = {
     fs.writeFileSync(filePath, base64Url.substring(matchs[0].length), { encoding: 'base64' })
     return filePath
   },
-  // 显式通过 macOS 系统 HTTPS 代理使用 Node 请求，避免渲染页跨域限制和 ZTools 会话未继承代理的问题。
+  // 通过 Node 请求 V2EX，按系统配置使用 HTTPS 代理，避免渲染页的跨域限制。
   getV2exTopics(kind) {
     return v2exService.getTopics(kind)
   },

@@ -20,5 +20,5 @@ test('将网络异常转换成供页面展示的错误', async () => {
     throw new Error('net::ERR_CONNECTION_TIMED_OUT')
   })
 
-  await assert.rejects(service.getTopics('hot'), /无法通过系统代理连接到 V2EX/)
+  await assert.rejects(service.getTopics('hot'), /无法连接到 V2EX/)
 })
