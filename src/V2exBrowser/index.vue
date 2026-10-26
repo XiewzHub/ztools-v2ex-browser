@@ -4,6 +4,8 @@ import { fetchReplies, fetchTopic, fetchTopics } from '../v2ex/client'
 import { filterTopics, formatRelativeTime } from '../v2ex/presentation'
 import { createAvatarStore } from '../v2ex/avatar'
 import { FeedCache } from '../v2ex/feed-cache'
+import { buildReplyThreads } from '../v2ex/reply-threads'
+import ReplyThread from './ReplyThread.vue'
 import type { FeedKind, TopicDetail, TopicReply, TopicSummary } from '../v2ex/types'
 
 defineProps<{ enterAction: Record<string, unknown> }>()
@@ -26,14 +28,14 @@ let feedRequestVersion = 0
 let detailRequestVersion = 0
 
 const visibleTopics = computed(() => filterTopics(topics.value, keyword.value))
+const replyThreads = computed(() => buildReplyThreads(replies.value))
 const selectedTopic = computed(() => topic.value)
 const feedTitle = computed(() => (feed.value === 'hot' ? '最热帖子' : '最新帖子'))
 const feeds = new FeedCache(fetchTopics)
-const avatars = createAvatarStore(async (url) => {
-  const image = await window.services.getV2exAvatar(normalizeAvatarUrl(url))
-  avatarVersion.value += 1
-  return image
-})
+const avatars = createAvatarStore(
+  (url) => window.services.getV2exAvatar(normalizeAvatarUrl(url)),
+  () => { avatarVersion.value += 1 }
+)
 
 async function loadFeed(forceRefresh = false) {
   const requestVersion = ++feedRequestVersion
@@ -219,10 +221,7 @@ onMounted(() => {
           <div v-if="repliesLoading && !replies.length" class="notice loading">正在加载回复...</div>
           <div v-else-if="repliesError" class="notice error"><span>{{ repliesError }}</span><button @click="refreshDetail">重试</button></div>
           <div v-else-if="!replies.length" class="notice empty">暂时还没有回复。</div>
-          <article v-for="(reply, index) in replies" :key="reply.id" class="reply">
-            <img class="avatar" :src="avatarUrl(reply.member.avatar_normal)" alt="" />
-            <div><div class="reply-meta"><strong>{{ reply.member.username }}</strong><span>#{{ index + 1 }}</span><span>{{ formatRelativeTime(reply.created) }}</span></div><p>{{ reply.content || '（无文字内容）' }}</p></div>
-          </article>
+          <ReplyThread v-for="thread in replyThreads" :key="thread.reply.id" :thread="thread" :topic-author="selectedTopic.member.username" :avatar-url="avatarUrl" />
         </section>
       </template>
     </section>
