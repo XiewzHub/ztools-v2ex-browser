@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { formatRelativeTime } from '../v2ex/presentation'
 import type { ReplyThread as ReplyThreadNode } from '../v2ex/reply-threads'
+import RichContent from './RichContent.vue'
 
 const props = defineProps<{
   thread: ReplyThreadNode
@@ -23,7 +24,7 @@ const isTopicAuthor = computed(() => props.thread.reply.member.username.toLowerC
           <time :datetime="new Date(thread.reply.created * 1_000).toISOString()">{{ formatRelativeTime(thread.reply.created) }}</time>
           <span class="reply-floor" :aria-label="`第 ${thread.floor} 楼`">#{{ thread.floor }}</span>
         </div>
-        <p>{{ thread.content || '（无文字内容）' }}</p>
+        <RichContent :content-rendered="thread.reply.content_rendered" :content="thread.content" empty-text="（无文字内容）" />
       </div>
     </div>
     <div v-if="thread.children.length" class="reply-children" role="group" :aria-label="`第 ${thread.floor} 楼的子回复`">

@@ -5,6 +5,8 @@ import { filterTopics, formatRelativeTime } from '../v2ex/presentation'
 import { createAvatarStore } from '../v2ex/avatar'
 import { FeedCache } from '../v2ex/feed-cache'
 import { buildReplyThreads } from '../v2ex/reply-threads'
+import { normalizeContentUrl, openExternalUrl } from '../v2ex/rich-content'
+import RichContent from './RichContent.vue'
 import ReplyThread from './ReplyThread.vue'
 import type { FeedKind, TopicDetail, TopicReply, TopicSummary } from '../v2ex/types'
 
@@ -124,12 +126,7 @@ function refreshDetail() {
 
 function openInBrowser() {
   if (!selectedTopic.value) return
-  const url = selectedTopic.value.url
-  if (window.ztools?.shellOpenExternal) {
-    window.ztools.shellOpenExternal(url)
-    return
-  }
-  window.open(url, '_blank', 'noopener,noreferrer')
+  openExternalUrl(normalizeContentUrl(selectedTopic.value.url))
 }
 
 function normalizeAvatarUrl(url: string): string {
@@ -212,7 +209,7 @@ onMounted(() => {
           <p class="eyebrow">{{ selectedTopic.node.title }} / {{ selectedTopic.member.username }}</p>
           <h1>{{ selectedTopic.title }}</h1>
           <div class="author-line"><img class="avatar" :src="avatarUrl(selectedTopic.member.avatar_normal)" alt="" /><span>{{ selectedTopic.member.username }}</span><span>{{ formatRelativeTime(selectedTopic.created) }}</span><span>{{ selectedTopic.replies }} 条回复</span></div>
-          <p class="topic-content">{{ selectedTopic.content || '这篇帖子没有正文。' }}</p>
+          <RichContent :content-rendered="selectedTopic.content_rendered" :content="selectedTopic.content" empty-text="这篇帖子没有正文。" />
           <div v-if="detailError" class="notice error" role="alert"><strong>帖子刷新失败，当前显示上次加载的内容</strong><span>{{ detailError }}</span></div>
         </article>
 
