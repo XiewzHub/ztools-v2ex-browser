@@ -18,13 +18,22 @@ export function normalizeContentUrl(value: string): string {
 
 export function renderRichContent(contentRendered?: string): string {
   if (!contentRendered) return ''
-  return DOMPurify.sanitize(contentRendered, {
+  const sanitized = document.createElement('div')
+  sanitized.innerHTML = DOMPurify.sanitize(contentRendered, {
     ALLOWED_TAGS,
     ALLOWED_ATTR: ['href', 'src', 'alt', 'loading', 'class'],
     ALLOWED_URI_REGEXP,
     FORBID_ATTR: ['style'],
     ADD_DATA_URI_TAGS: []
   })
+  // 插件从本地文件加载，不能让相对地址继承 file: 协议。
+  for (const element of sanitized.querySelectorAll('[src], [href]')) {
+    for (const attribute of ['src', 'href']) {
+      const value = element.getAttribute(attribute)
+      if (value) element.setAttribute(attribute, normalizeContentUrl(value))
+    }
+  }
+  return sanitized.innerHTML
 }
 
 export function openExternalUrl(value: string): void {
